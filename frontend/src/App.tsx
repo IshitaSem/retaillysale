@@ -1,5 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import api, {
+  getApiBaseUrl,
   type EDAResponse,
   type DatasetSummary,
   type DatasetPreview,
@@ -89,7 +90,7 @@ function LoadingCard({ message = 'Loading real dataset metrics...' }: { message?
     <Card className="empty-result" style={{ padding: '40px 20px', textAlign: 'center' }}>
       <Icon name="spark" size={24} />
       <strong>{message}</strong>
-      <span>Communicating with RetaillySale FastAPI backend on port 8081</span>
+      <span>Communicating with RetaillySale FastAPI backend</span>
     </Card>
   );
 }
@@ -112,7 +113,7 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry?: () => void
       <strong style={{ color: '#d93856' }}>Failed to load API data</strong>
       <span style={{ color: '#888', display: 'block', margin: '8px 0' }}>{message}</span>
       <div style={{ fontSize: '10px', color: '#666', marginBottom: '12px' }}>
-        Expected backend at: <code>http://127.0.0.1:8081</code>
+        Expected backend at: <code>{getApiBaseUrl()}</code>
       </div>
       {onRetry && (
         <button
@@ -1936,22 +1937,30 @@ function DatasetExplorer() {
   const [search, setSearch] = useState('');
   const [preview, setPreview] = useState<DatasetPreview | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchPreview = () => {
     let active = true;
     setLoading(true);
+    setError(null);
     api
       .getDatasetPreview(datasetType, page, 10, search)
       .then((data) => {
         if (active) setPreview(data);
       })
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        if (active) setError(err.message || 'Failed to load dataset preview');
+      })
       .finally(() => {
         if (active) setLoading(false);
       });
     return () => {
       active = false;
     };
+  };
+
+  useEffect(() => {
+    return fetchPreview();
   }, [datasetType, page, search]);
 
   return (
@@ -2005,6 +2014,8 @@ function DatasetExplorer() {
 
       {loading ? (
         <LoadingCard message="Querying dataset preview..." />
+      ) : error && !preview ? (
+        <ErrorCard message={error} onRetry={fetchPreview} />
       ) : preview && preview.records.length > 0 ? (
         <div style={{ overflowX: 'auto' }}>
           <div className="table">
@@ -2131,7 +2142,7 @@ export default function App() {
       setBackendOnline(false);
       setError(
         err.message ||
-          'Cannot reach RetaillySale FastAPI backend on port 8081. Ensure backend is running.'
+          `Cannot reach RetaillySale FastAPI backend at ${getApiBaseUrl()}. Please verify the backend service is running.`
       );
     } finally {
       setLoading(false);

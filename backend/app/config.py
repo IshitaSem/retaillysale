@@ -50,6 +50,11 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
 cors_origins_str = os.getenv(
     "CORS_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8443,http://127.0.0.1:8443,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8081,http://127.0.0.1:8081",
+    "https://retaillysale.vercel.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8443,http://127.0.0.1:8443,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8081,http://127.0.0.1:8081",
 )
-CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+raw_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+CORS_ORIGINS: list[str] = []
+for orig in raw_origins:
+    CORS_ORIGINS.append(orig.rstrip("/"))
+    CORS_ORIGINS.append(orig.rstrip("/") + "/")
+CORS_ORIGINS = list(dict.fromkeys(CORS_ORIGINS))

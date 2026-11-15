@@ -3,21 +3,49 @@
  * Connects frontend React components to the Python FastAPI backend.
  */
 
+export const PRODUCTION_BACKEND_URL = 'https://retaillysale.onrender.com';
+export const LOCAL_BACKEND_URL = 'http://127.0.0.1:8081';
+
 export function getApiBaseUrl(): string {
   const envUrl = import.meta.env.VITE_API_BASE_URL;
-  // If explicitly configured for production (e.g. Render), use that
-  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
-    return envUrl.replace(/\/$/, '');
+
+  // 1. If explicit environment variable is set
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim().length > 0) {
+    const cleanUrl = envUrl.trim().replace(/\/$/, '');
+
+    // In production build, enforce never using localhost/127.0.0.1
+    if (import.meta.env.PROD) {
+      if (cleanUrl.includes('localhost') || cleanUrl.includes('127.0.0.1')) {
+        return PRODUCTION_BACKEND_URL;
+      }
+      return cleanUrl;
+    }
+
+    return cleanUrl;
   }
-  // On local machines, force 127.0.0.1 to avoid Windows IPv6 [::1] connection refused issues
+
+  // 2. Check browser execution context if window exists
   if (typeof window !== 'undefined' && window.location) {
     const host = window.location.hostname;
-    if (!host || host === 'localhost' || host === '127.0.0.1') {
-      return 'http://127.0.0.1:8081';
+    const isLocalhost = !host || host === 'localhost' || host === '127.0.0.1' || host === '::1';
+
+    // If running in browser and NOT localhost (e.g. retaillysale.vercel.app), use Render production backend
+    if (!isLocalhost) {
+      return PRODUCTION_BACKEND_URL;
     }
-    return `http://${host}:8081`;
+
+    // If running on a local host in development, use local backend
+    if (isLocalhost && !import.meta.env.PROD) {
+      return LOCAL_BACKEND_URL;
+    }
   }
-  return 'http://127.0.0.1:8081';
+
+  // 3. Fallback based on build mode
+  if (import.meta.env.PROD) {
+    return PRODUCTION_BACKEND_URL;
+  }
+
+  return LOCAL_BACKEND_URL;
 }
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -662,7 +690,8 @@ export interface PredictionResponse {
 
 async function executeFetch<T>(targetUrl: string, options: RequestInit, headers: Record<string, string>): Promise<T> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  // Allow 60 seconds for Render free tier spin-up / cold starts
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
 
   try {
     const res = await fetch(targetUrl, {
@@ -706,8 +735,15 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   try {
     return await executeFetch<T>(url, options, headers);
   } catch (primaryErr: any) {
-    // Resilient fallback 1: try http://127.0.0.1:8081 if not already attempted
-    if (typeof window !== 'undefined' && !url.includes('127.0.0.1:8081')) {
+    // Only attempt local fallbacks when running in local development mode
+    const isLocalDev =
+      !import.meta.env.PROD &&
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === '::1');
+
+    if (isLocalDev && !url.includes('127.0.0.1:8081')) {
       try {
         const fallbackUrl = `http://127.0.0.1:8081${endpoint}`;
         return await executeFetch<T>(fallbackUrl, options, headers);
@@ -716,8 +752,8 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
       }
     }
 
-    // Resilient fallback 2: try relative Vite proxy endpoint
-    if (typeof window !== 'undefined' && url.startsWith('http')) {
+    // Relative proxy fallback (only in local dev mode)
+    if (isLocalDev && url.startsWith('http')) {
       try {
         return await executeFetch<T>(endpoint, options, headers);
       } catch {

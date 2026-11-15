@@ -177,11 +177,11 @@ The frontend will start and display a local URL (e.g., `http://localhost:5173` o
    - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 5. In **Environment Variables**, add:
    - `ENVIRONMENT`: `production`
-   - `CORS_ORIGINS`: `https://your-frontend-app.vercel.app,http://localhost:5173`
+   - `CORS_ORIGINS`: `https://retaillysale.vercel.app,http://localhost:5173`
    - `DATA_RAW_PATH`: `../data/raw/INDIA_RETAIL_DATA.xlsx`
    - `DATA_PROCESSED_PATH`: `../data/processed/retail_cleaned.csv`
    - `MODELS_DIR`: `models`
-6. Click **Deploy Web Service**. Once deployed, copy your Render URL (e.g., `https://retaillysale-api.onrender.com`).
+6. Click **Deploy Web Service**. Once deployed, copy your Render URL (e.g., `https://retaillysale.onrender.com`).
 
 ### B. Deploying the Frontend to Vercel
 1. In the [Vercel Dashboard](https://vercel.com), click **Add New Project** and import the GitHub repository.
@@ -191,7 +191,7 @@ The frontend will start and display a local URL (e.g., `http://localhost:5173` o
    - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
 3. Under **Environment Variables**, add:
-   - `VITE_API_BASE_URL`: `https://retaillysale-api.onrender.com` (your deployed Render backend URL)
+   - `VITE_API_BASE_URL`: `https://retaillysale.onrender.com` (your deployed Render backend URL)
 4. Click **Deploy**. Vercel will build the React bundle and deploy it globally.
 5. In the backend on Render, verify that `CORS_ORIGINS` contains your newly generated Vercel production domain.
 
