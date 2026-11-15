@@ -1,0 +1,10 @@
+{
+  "description": "A retail analytics dashboard for data science students and analysts to explore sales data, select predictive features, compare models, and forecast store sales.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
